@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reversi Oyunu</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .player-disc {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid #333;
+        }
+        .black-disc { background: #000; }
+        .white-disc { background: #fff; }
+        .score {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+        .strategic-score {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 2px;
+        }
+        .current-turn {
+            border: 3px solid #4CAF50;
+            padding: 5px;
+            border-radius: 10px;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 2px;
+            background: #2d5016;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .cell {
+            aspect-ratio: 1;
+            background: #3a6d1f;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .cell:hover {
+            background: #4a8d2f;
+        }
+        .cell.valid-move {
+            background: #5fa535;
+            cursor: pointer;
+        }
+        .cell.valid-move::after {
+            content: '';
+            position: absolute;
+            width: 40%;
+            height: 40%;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+        }
+        .disc {
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            border: 2px solid #333;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .difficulty-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 1em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .difficulty-btn {
+            flex: 1;
+            min-width: 100px;
+            background: #e0e0e0;
+            color: #333;
+        }
+        .difficulty-btn.active {
+            background: #4CAF50;
+            color: white;
+            transform: scale(1.05);
+        }
+        .difficulty-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .start-btn {
+            background: #2196F3;
+            color: white;
+            font-size: 1.1em;
+        }
+        .start-btn:hover {
+            background: #1976D2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .start-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .game-over {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.4);
+            display: none;
+            justify-content: flex-end;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .game-over.show {
+            display: flex;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .game-over-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: -5px 0 30px rgba(0,0,0,0.3);
+            animation: slideInRight 0.4s ease-out;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideInRight {
+            from { 
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to { 
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .game-over {
+                justify-content: center;
+                background: rgba(0,0,0,0.85);
+            }
+            .game-over-content {
+                max-width: 90%;
+            }
+        }
+        .game-over-content h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+        .winner-text {
+            color: #4CAF50;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+        .score-details {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+            font-size: 1.1em;
+        }
+        .score-row:last-child {
+            border-bottom: none;
+        }
+        .score-label {
+            color: #666;
+        }
+        .score-value {
+            font-weight: bold;
+            color: #333;
+        }
+        .score-value.black {
+            color: #000;
+        }
+        .score-value.white {
+            color: #666;
+        }
+        .status {
+            text-align: center;
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff3cd;
+            border-radius: 8px;
+            color: #856404;
+            font-weight: bold;
+        }
+        .thinking {
+            color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Reversi Oyunu</h1>
+        
+        <div class="info-panel">
+            <div class="player-info" id="player-black">
+                <div class="player-disc black-disc"></div>
+                <div>
+                    <div>Siyah (Sen)</div>
+                    <div class="score" id="score-black">2</div>
+                    <div class="strategic-score" id="strategic-black">Skor: 50</div>
+                </div>
+            </div>
+            <div class="player-info" id="player-white">
+                <div class="player-disc white-disc"></div>
+                <div>
+                    <div>Beyaz (Bilgisayar)</div>
+                    <div class="score" id="score-white">2</div>
+                    <div class="strategic-score" id="strategic-white">Skor: 50</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="status" class="status" style="display:none;"></div>
+
+        <div class="board" id="board"></div>
+
+        <div class="controls">
+            <div class="difficulty-selector">
+                <button class="difficulty-btn" data-level="0">Kolay</button>
+                <button class="difficulty-btn active" data-level="1">Orta</button>
+                <button class="difficulty-btn" data-level="2">Zor</button>
+            </div>
+            <button class="start-btn" id="start-btn">Yeni Oyun Başlat</button>
+        </div>
+    </div>
+
+    <div class="game-over" id="game-over">
+        <div class="game-over-content">
+            <h2>Oyun Bitti!</h2>
+            <div class="winner-text" id="winner-text"></div>
+            <div class="score-details">
+                <div class="score-row">
+                    <span class="score-label">Siyah Taş Sayısı:</span>
+                    <span class="score-value black" id="final-black-pieces"></span>
+                </div>
+                <div class="score-row">
+                    <span class="score-label">Siyah Stratejik Skor:</span>
+                    <span class="score-value black" id="final-black-strategic"></span>
+                </div>
+                <div class="score-row">
+                    <span class="score-label">Beyaz Taş Sayısı:</span>
+                    <span class="score-value white" id="final-white-pieces"></span>
+                </div>
+                <div class="score-row">
+                    <span class="score-label">Beyaz Stratejik Skor:</span>
+                    <span class="score-value white" id="final-white-strategic"></span>
+                </div>
+            </div>
+            <button class="start-btn" onclick="location.reload()">Yeniden Başlat</button>
+        </div>
+    </div>
+
+    <script>
+        const BLACK = 1;
+        const WHITE = -1;
+        const EMPTY = 0;
+        
+        const DIRECTIONS = [
+            [-1, -1], [-1, 0], [-1, 1],
+            [0, -1],           [0, 1],
+            [1, -1],  [1, 0],  [1, 1]
+        ];
+
+        // Pozisyon ağırlıkları - her karenin stratejik değeri
+        // Köşeler (100): En değerli pozisyonlar - alınamazlar
+        // Köşe yanları (20): Düşük değer - rakibe köşe verebilir
+        // Köşe diagonalleri (10): En tehlikeli - kesinlikle kaçınılmalı
+        // Kenarlar (40): İyi pozisyonlar - stabil
+        // İç bölge (25-35): Orta değer
+        const POSITION_WEIGHTS = [
+            [100, 20, 40, 40, 40, 40, 20, 100],
+            [ 20, 10, 30, 30, 30, 30, 10,  20],
+            [ 40, 30, 35, 35, 35, 35, 30,  40],
+            [ 40, 30, 35, 25, 25, 35, 30,  40],
+            [ 40, 30, 35, 25, 25, 35, 30,  40],
+            [ 40, 30, 35, 35, 35, 35, 30,  40],
+            [ 20, 10, 30, 30, 30, 30, 10,  20],
+            [100, 20, 40, 40, 40, 40, 20, 100]
+        ];
+
+        class ReversiGame {
+            constructor() {
+                this.board = this.createEmptyBoard();
+                this.currentPlayer = BLACK;
+                this.difficulty = 1; // 0: Kolay, 1: Orta, 2: Zor
+                this.gameActive = false;
+                this.isComputerThinking = false;
+                this.transpositionTable = new Map();
+                this.initializeBoard();
+            }
+
+            createEmptyBoard() {
+                return Array(8).fill().map(() => Array(8).fill(EMPTY));
+            }
+
+            initializeBoard() {
+                this.board = this.createEmptyBoard();
+                this.board[3][3] = WHITE;
+                this.board[3][4] = BLACK;
+                this.board[4][3] = BLACK;
+                this.board[4][4] = WHITE;
+                this.currentPlayer = BLACK;
+                this.gameActive = true;
+                this.transpositionTable.clear();
+            }
+
+            isValidMove(row, col, player) {
+                if (this.board[row][col] !== EMPTY) return false;
+                
+                for (let [dr, dc] of DIRECTIONS) {
+                    if (this.checkDirection(row, col, dr, dc, player)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            checkDirection(row, col, dr, dc, player) {
+                let r = row + dr;
+                let c = col + dc;
+                let foundOpponent = false;
+
+                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                    if (this.board[r][c] === EMPTY) return false;
+                    if (this.board[r][c] === player) {
+                        return foundOpponent;
+                    }
+                    foundOpponent = true;
+                    r += dr;
+                    c += dc;
+                }
+                return false;
+            }
+
+            getValidMoves(player) {
+                const moves = [];
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        if (this.isValidMove(i, j, player)) {
+                            moves.push([i, j]);
+                        }
+                    }
+                }
+                return moves;
+            }
+
+            makeMove(row, col, player) {
+                if (!this.isValidMove(row, col, player)) return false;
+
+                this.board[row][col] = player;
+
+                for (let [dr, dc] of DIRECTIONS) {
+                    if (this.checkDirection(row, col, dr, dc, player)) {
+                        this.flipPieces(row, col, dr, dc, player);
+                    }
+                }
+                return true;
+            }
+
+            flipPieces(row, col, dr, dc, player) {
+                let r = row + dr;
+                let c = col + dc;
+
+                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                    if (this.board[r][c] === player) break;
+                    this.board[r][c] = player;
+                    r += dr;
+                    c += dc;
+                }
+            }
+
+            getScore() {
+                let black = 0, white = 0;
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        if (this.board[i][j] === BLACK) black++;
+                        else if (this.board[i][j] === WHITE) white++;
+                    }
+                }
+                return { black, white };
+            }
+
+            // Stratejik skor hesaplama (pozisyon ağırlıklarına göre)
+            calculateStrategicScore(player) {
+                let score = 0;
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        if (this.board[i][j] === player) {
+                            score += POSITION_WEIGHTS[i][j];
+                        }
+                    }
+                }
+                return score;
+            }
+
+            boardToString() {
+                return this.board.map(row => row.join(',')).join(';');
+            }
+
+            evaluateBoard(player) {
+                const boardStr = this.boardToString();
+                const cacheKey = `${boardStr}_${player}`;
+                
+                if (this.transpositionTable.has(cacheKey)) {
+                    return this.transpositionTable.get(cacheKey);
+                }
+
+                let score = 0;
+                const opponent = -player;
+
+                // 1. Pozisyon ağırlıkları
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        if (this.board[i][j] === player) {
+                            score += POSITION_WEIGHTS[i][j];
+                        } else if (this.board[i][j] === opponent) {
+                            score -= POSITION_WEIGHTS[i][j];
+                        }
+                    }
+                }
+
+                // 2. Mobilite
+                const playerMoves = this.getValidMoves(player).length;
+                const opponentMoves = this.getValidMoves(opponent).length;
+                score += (playerMoves - opponentMoves) * 10;
+
+                // 3. Taş sayısı (oyun sonuna yaklaşırken önemli)
+                const counts = this.getScore();
+                const totalPieces = counts.black + counts.white;
+                if (totalPieces > 50) {
+                    const diff = player === BLACK ? 
+                        (counts.black - counts.white) : 
+                        (counts.white - counts.black);
+                    score += diff * 5;
+                }
+
+                // 4. Köşe kontrolü
+                const corners = [[0,0], [0,7], [7,0], [7,7]];
+                for (let [r, c] of corners) {
+                    if (this.board[r][c] === player) score += 100;
+                    else if (this.board[r][c] === opponent) score -= 100;
+                }
+
+                this.transpositionTable.set(cacheKey, score);
+                return score;
+            }
+
+            minimax(depth, alpha, beta, maximizingPlayer, player) {
+                const validMoves = this.getValidMoves(player);
+                
+                if (depth === 0 || validMoves.length === 0) {
+                    return { score: this.evaluateBoard(maximizingPlayer ? player : -player), move: null };
+                }
+
+                if (maximizingPlayer) {
+                    let maxEval = -Infinity;
+                    let bestMove = null;
+
+                    for (let move of validMoves) {
+                        const [row, col] = move;
+                        const newGame = this.clone();
+                        newGame.makeMove(row, col, player);
+                        
+                        const evaluation = newGame.minimax(depth - 1, alpha, beta, false, -player);
+                        
+                        if (evaluation.score > maxEval) {
+                            maxEval = evaluation.score;
+                            bestMove = move;
+                        }
+                        
+                        alpha = Math.max(alpha, evaluation.score);
+                        if (beta <= alpha) break;
+                    }
+                    return { score: maxEval, move: bestMove };
+                } else {
+                    let minEval = Infinity;
+                    let bestMove = null;
+
+                    for (let move of validMoves) {
+                        const [row, col] = move;
+                        const newGame = this.clone();
+                        newGame.makeMove(row, col, player);
+                        
+                        const evaluation = newGame.minimax(depth - 1, alpha, beta, true, -player);
+                        
+                        if (evaluation.score < minEval) {
+                            minEval = evaluation.score;
+                            bestMove = move;
+                        }
+                        
+                        beta = Math.min(beta, evaluation.score);
+                        if (beta <= alpha) break;
+                    }
+                    return { score: minEval, move: bestMove };
+                }
+            }
+
+            getBestMove() {
+                const validMoves = this.getValidMoves(WHITE);
+                if (validMoves.length === 0) return null;
+
+                switch(this.difficulty) {
+                    case 0: // Kolay - rastgele hamle
+                        return validMoves[Math.floor(Math.random() * validMoves.length)];
+                    
+                    case 1: // Orta - derinlik 3
+                        return this.minimax(3, -Infinity, Infinity, true, WHITE).move;
+                    
+                    case 2: // Zor - derinlik 5
+                        return this.minimax(5, -Infinity, Infinity, true, WHITE).move;
+                }
+            }
+
+            clone() {
+                const cloned = new ReversiGame();
+                cloned.board = this.board.map(row => [...row]);
+                cloned.currentPlayer = this.currentPlayer;
+                cloned.difficulty = this.difficulty;
+                cloned.gameActive = this.gameActive;
+                return cloned;
+            }
+
+            isGameOver() {
+                const blackMoves = this.getValidMoves(BLACK).length;
+                const whiteMoves = this.getValidMoves(WHITE).length;
+                return blackMoves === 0 && whiteMoves === 0;
+            }
+        }
+
+        class GameUI {
+            constructor() {
+                this.game = new ReversiGame();
+                this.boardElement = document.getElementById('board');
+                this.initUI();
+            }
+
+            initUI() {
+                this.createBoard();
+                this.setupEventListeners();
+                this.updateUI();
+            }
+
+            createBoard() {
+                this.boardElement.innerHTML = '';
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.row = i;
+                        cell.dataset.col = j;
+                        cell.addEventListener('click', () => this.handleCellClick(i, j));
+                        this.boardElement.appendChild(cell);
+                    }
+                }
+            }
+
+            setupEventListeners() {
+                document.getElementById('start-btn').addEventListener('click', () => this.startGame());
+                
+                document.querySelectorAll('.difficulty-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.game.difficulty = parseInt(e.target.dataset.level);
+                    });
+                });
+            }
+
+            startGame() {
+                this.game.initializeBoard();
+                this.game.gameActive = true;
+                this.updateUI();
+                this.hideStatus();
+                document.getElementById('game-over').classList.remove('show');
+            }
+
+            async handleCellClick(row, col) {
+                if (!this.game.gameActive || this.game.currentPlayer !== BLACK || this.game.isComputerThinking) {
+                    return;
+                }
+
+                if (this.game.makeMove(row, col, BLACK)) {
+                    this.updateUI();
+                    await this.sleep(300);
+
+                    if (this.game.isGameOver()) {
+                        await this.sleep(500);
+                        this.endGame();
+                        return;
+                    }
+
+                    this.game.currentPlayer = WHITE;
+                    this.updateUI();
+
+                    if (this.game.getValidMoves(WHITE).length === 0) {
+                        this.showStatus('Bilgisayarın geçerli hamlesi yok. Sıra sizde!');
+                        await this.sleep(1500);
+                        this.game.currentPlayer = BLACK;
+                        this.updateUI();
+                        
+                        if (this.game.getValidMoves(BLACK).length === 0) {
+                            await this.sleep(500);
+                            this.endGame();
+                        }
+                        return;
+                    }
+
+                    await this.computerMove();
+                }
+            }
+
+            async computerMove() {
+                this.game.isComputerThinking = true;
+                this.showStatus('Bilgisayar düşünüyor...', true);
+                
+                await this.sleep(500);
+                
+                const move = this.game.getBestMove();
+                if (move) {
+                    const [row, col] = move;
+                    this.game.makeMove(row, col, WHITE);
+                    this.updateUI();
+                    await this.sleep(300);
+                }
+
+                this.game.isComputerThinking = false;
+                this.hideStatus();
+
+                if (this.game.isGameOver()) {
+                    this.endGame();
+                    return;
+                }
+
+                this.game.currentPlayer = BLACK;
+                this.updateUI();
+
+                if (this.game.getValidMoves(BLACK).length === 0) {
+                    this.showStatus('Geçerli hamleniz yok. Sıra bilgisayarda!');
+                    await this.sleep(1500);
+                    this.game.currentPlayer = WHITE;
+                    this.updateUI();
+                    await this.computerMove();
+                }
+            }
+
+            updateUI() {
+                const validMoves = this.game.gameActive ? this.game.getValidMoves(this.game.currentPlayer) : [];
+                
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        const cell = this.boardElement.children[i * 8 + j];
+                        cell.innerHTML = '';
+                        cell.classList.remove('valid-move');
+                        
+                        const piece = this.game.board[i][j];
+                        if (piece !== EMPTY) {
+                            const disc = document.createElement('div');
+                            disc.className = `disc ${piece === BLACK ? 'black-disc' : 'white-disc'}`;
+                            cell.appendChild(disc);
+                        } else if (this.game.currentPlayer === BLACK && validMoves.some(([r, c]) => r === i && c === j)) {
+                            cell.classList.add('valid-move');
+                        }
+                    }
+                }
+
+                // Taş sayılarını güncelle
+                const scores = this.game.getScore();
+                document.getElementById('score-black').textContent = scores.black;
+                document.getElementById('score-white').textContent = scores.white;
+                
+                // Stratejik skorları güncelle (pozisyon ağırlıklarına göre)
+                const blackStrategic = this.game.calculateStrategicScore(BLACK);
+                const whiteStrategic = this.game.calculateStrategicScore(WHITE);
+                document.getElementById('strategic-black').textContent = `Skor: ${blackStrategic}`;
+                document.getElementById('strategic-white').textContent = `Skor: ${whiteStrategic}`;
+
+                // Sıra göstergesi
+                document.getElementById('player-black').classList.toggle('current-turn', this.game.currentPlayer === BLACK);
+                document.getElementById('player-white').classList.toggle('current-turn', this.game.currentPlayer === WHITE);
+            }
+
+            showStatus(message, thinking = false) {
+                const status = document.getElementById('status');
+                status.textContent = message;
+                status.style.display = 'block';
+                status.className = 'status' + (thinking ? ' thinking' : '');
+            }
+
+            hideStatus() {
+                document.getElementById('status').style.display = 'none';
+            }
+
+            endGame() {
+                this.game.gameActive = false;
+                const scores = this.game.getScore();
+                
+                // Taş sayılarını göster
+                document.getElementById('final-black-pieces').textContent = scores.black;
+                document.getElementById('final-white-pieces').textContent = scores.white;
+                
+                // Stratejik skorları göster
+                const blackStrategic = this.game.calculateStrategicScore(BLACK);
+                const whiteStrategic = this.game.calculateStrategicScore(WHITE);
+                document.getElementById('final-black-strategic').textContent = blackStrategic;
+                document.getElementById('final-white-strategic').textContent = whiteStrategic;
+                
+                let winnerText = '';
+                if (scores.black > scores.white) {
+                    winnerText = '🎉 Kazanan: Siyah (Sen) 🎉';
+                } else if (scores.white > scores.black) {
+                    winnerText = '💻 Kazanan: Beyaz (Bilgisayar) 💻';
+                } else {
+                    winnerText = '🤝 Berabere! 🤝';
+                }
+                
+                document.getElementById('winner-text').textContent = winnerText;
+                document.getElementById('game-over').classList.add('show');
+            }
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        const gameUI = new GameUI();
+    </script>
+</body>
+</html>
